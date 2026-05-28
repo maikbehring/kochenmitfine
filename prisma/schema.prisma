@@ -1,0 +1,128 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  READER
+}
+
+enum RecipeCategory {
+  MAIN
+  SIDE
+  SOUP
+  DESSERT
+  SNACK
+}
+
+enum CommentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CourseType {
+  STARTER
+  MAIN
+  DESSERT
+  SIDE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String
+  password  String
+  role      Role     @default(READER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  recipes            Recipe[]
+  comments           Comment[] @relation("CommentAuthor")
+  moderatedComments  Comment[] @relation("CommentModerator")
+}
+
+model Recipe {
+  id               String         @id @default(cuid())
+  slug             String         @unique
+  title            String
+  shortDescription String?
+  category         RecipeCategory
+  calories         Float          @default(0)
+  protein          Float          @default(0)
+  carbs            Float          @default(0)
+  fat              Float          @default(0)
+  sugar            Float          @default(0)
+  isPublished      Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  createdById      String
+  createdBy        User           @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  ingredients RecipeIngredient[]
+  steps       RecipeStep[]
+  comments    Comment[]
+  comboItems  MenuComboItem[]
+}
+
+model RecipeIngredient {
+  id       String  @id @default(cuid())
+  recipeId String
+  recipe   Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  amount   Float?
+  unit     String?
+  name     String
+  position Int
+}
+
+model RecipeStep {
+  id          String  @id @default(cuid())
+  recipeId    String
+  recipe      Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  stepNumber  Int
+  instruction String
+  imageUrl    String?
+}
+
+model Comment {
+  id          String        @id @default(cuid())
+  recipeId    String
+  recipe      Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation("CommentAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  text        String
+  status      CommentStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  moderatedById String?
+  moderatedBy User?         @relation("CommentModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
+  moderatedAt DateTime?
+}
+
+model MenuCombo {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  items       MenuComboItem[]
+}
+
+model MenuComboItem {
+  id        String     @id @default(cuid())
+  comboId   String
+  combo     MenuCombo  @relation(fields: [comboId], references: [id], onDelete: Cascade)
+  recipeId  String
+  recipe    Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  courseType CourseType
+  position  Int
+}
